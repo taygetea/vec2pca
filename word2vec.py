@@ -38,7 +38,8 @@ def to_sentences(document, tokenizer, remove_stopwords=False, remove_urls=False)
 
 
 # train a model
-def train(sentences, features=100, mincount=100, workers=4, context=10, sample=1e-3, save=True, precomp=True):
+def train(sentences, features=100, mincount=100, workers=12, context=10,
+        sample=1e-3, save=False, precomp=True):
     model = Word2Vec(sentences,
                      sg=1,
                      workers=workers,
@@ -49,7 +50,8 @@ def train(sentences, features=100, mincount=100, workers=4, context=10, sample=1
     if precomp:
         model.init_sims(replace=True)
     if save:
-        model.save("%dfeatures_%dmin_words_%dcontext" % (features, mincount, context))
+        print(save)
+        model.save("%s_%dfeatures_%dmin_words_%dcontext" % (save, features, mincount, context))
     print("Training complete. Output contains %d words with %d features" % (model.syn0.size, model.syn0[0].size))
     return model
 
@@ -69,10 +71,11 @@ def run_pca(df, outfile, n_components=8):
 
 def main(fname, output):
     sentences = []
-    inputdata = pd.Series(open(fname).readlines()).dropna()
+    with open(fname).readlines().encode('ascii', 'ignore') as f:
+        inputdata = pd.Series(f).dropna()
     for document in inputdata:
         sentences += to_sentences(document, tokenizer)
-    model = train(sentences)
+    model = train(sentences, save=fname)
     keys = list(model.vocab.keys())
     df = pd.DataFrame(model[keys], index=keys)
     run_pca(df, output)
