@@ -56,7 +56,7 @@ def train(sentences, features=100, mincount=100, workers=12, context=10,
     return model
 
 
-def run_pca(df, outfile, n_components=8):
+def run_pca(df, outfile="components.csv", n_components=8):
     pca = PCA(n_components)
     pc = pca.fit_transform(df)
     component_names = ["PC"+str(x) for x in range(1,len(pc[0])+1)]
@@ -67,18 +67,20 @@ def run_pca(df, outfile, n_components=8):
                            wordcomponents.iloc[-20:,0:4]])
     print(concatted.to_string(index=False))
 
-    wordcomponents.to_csv(outfile)
+    if outfile:
+        wordcomponents.to_csv(outfile)
+    else:
+        return wordcomponents
 
 def main(fname, output):
     sentences = []
-    with open(fname).readlines().encode('ascii', 'ignore') as f:
-        inputdata = pd.Series(f).dropna()
+    inputdata = pd.Series(open(fname).readlines()).dropna()
     for document in inputdata:
         sentences += to_sentences(document, tokenizer)
     model = train(sentences, save=fname)
     keys = list(model.vocab.keys())
     df = pd.DataFrame(model[keys], index=keys)
-    run_pca(df, output)
+    run_pca(df, outfile=output)
 
 
 if __name__ == "__main__":
