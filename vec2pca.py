@@ -8,7 +8,14 @@ import plac
 import re
 from sklearn.decomposition import PCA
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
+
+
+try:
+    tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
+except:
+    import nltk.downloader
+    downloader.download("punkt"
+    tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
 
 
