@@ -3,19 +3,13 @@ from gensim.models import Word2Vec
 import logging
 from nltk.corpus import stopwords
 import nltk.data
+import os
 import pandas as pd
 import plac
 import re
 from sklearn.decomposition import PCA
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
 
-
-try:
-    tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
-except:
-    import nltk.downloader
-    downloader.download("punkt"
-    tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
 
 
@@ -45,7 +39,7 @@ def to_sentences(document, tokenizer, remove_stopwords=False, remove_urls=False)
 
 
 # train a model
-def train(sentences, features=100, mincount=100, workers=12, context=10,
+def train(sentences, features=100, mincount=20, workers=1, context=10,
         sample=1e-3, save=False, precomp=True):
     model = Word2Vec(sentences,
                      sg=1,
@@ -57,37 +51,59 @@ def train(sentences, features=100, mincount=100, workers=12, context=10,
     if precomp:
         model.init_sims(replace=True)
     if save:
-        print(save)
-        model.save("%s_%dfeatures_%dmin_words_%dcontext" % (save, features, mincount, context))
-    print("Training complete. Output contains %d words with %d features" % (model.syn0.size, model.syn0[0].size))
+        savestrip = "".join(save.split(".")[:-1])
+        model.save(os.path.join("outputs", savestrip+".model"))
+    logging.info("Training complete. Output contains %d words with %d features" %
+            (model.syn0.size, model.syn0[0].size))
     return model
 
 
-def run_pca(df, outfile="components.csv", n_components=8):
+def run_pca(df, outfile="components.csv", n_components=5):
     pca = PCA(n_components)
     pc = pca.fit_transform(df)
-    component_names = ["PC"+str(x) for x in range(1,len(pc[0])+1)]
+    component_names = ["PC"+str(x) for x in range(0,len(pc[0]))]
     df2 = pd.DataFrame(pc, index=df.index, columns=component_names)
     wordcomponents = pd.DataFrame([df2.sort_values(by=x).index for x in component_names]).transpose()
-    concatted = pd.concat([wordcomponents.iloc[0:20,0:4],
-                           pd.DataFrame(wordcomponents.columns[0:4]).transpose(),
-                           wordcomponents.iloc[-20:,0:4]])
-    print(concatted.to_string(index=False))
+
+    def disprow(row):
+        if row == 1:
+            r = wordcomponents.iloc[:1,0:n_components]
+        elif row == -1:
+            r = wordcomponents.iloc[-1:,0:n_components]
+        r = r.to_string(header=False, index=False).split(" ")
+        r = "".join([(x).ljust(15) for x in r if x.strip()])
+        return r
+
+    logging.info("".join([x.ljust(15) for x in component_names]))
+    logging.info(disprow(1))
+    logging.info(disprow(-1))
 
     if outfile:
-        wordcomponents.to_csv(outfile)
+        wordcomponents.to_csv(os.path.join("outputs", outfile))
+        logging.info("Components saved at " + os.getcwd() + "/outputs/" + outfile)
     else:
         return wordcomponents
 
 def main(fname, output):
-    sentences = []
+
+
+    os.makedirs("outputs", exist_ok=True)
+
+    tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
+
     inputdata = pd.Series(open(fname).readlines()).dropna()
+
+    sentences = []
     for document in inputdata:
         sentences += to_sentences(document, tokenizer)
+
     model = train(sentences, save=fname)
+
     keys = list(model.vocab.keys())
     df = pd.DataFrame(model[keys], index=keys)
-    run_pca(df, outfile=output)
+
+    pcs = run_pca(df, outfile=output)
+    return df, pcs
 
 
 if __name__ == "__main__":
@@ -95,19 +111,3 @@ if __name__ == "__main__":
     # filename = "/home/olivia/datascience/d"
     # main(filename, outputfile)
     plac.call(main)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
