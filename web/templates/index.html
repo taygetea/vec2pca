@@ -1,0 +1,106 @@
+{% extends "base_template.html" %}
+{% block title %}Selection{% endblock %}
+{% block head_extra %}
+<script>
+    function loadXMLDoc()
+    {
+        var req = new XMLHttpRequest()
+        req.onreadystatechange = function()
+        {
+            if (req.readyState == 4)
+            {
+                if (req.status != 200)
+                {
+                    //error handling code here
+                }
+                else
+                {
+                    var response = JSON.parse(req.responseText)
+                    document.getElementById('myDiv').innerHTML = response.filename
+                }
+            }
+        }
+
+        req.open('POST', '/ajax')
+        req.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
+        var un = document.getElementById('filename').value
+        var postVars = 'filename='+un
+        req.send(postVars)
+
+        return false
+    }
+
+    function loadLoadingBar() {
+        document.getElementById('myDiv').innerHTML = '<div class="progress"><div class="indeterminate"></div></div>'
+		document.getElementById('upload').submit();
+        return false;
+    }
+
+	$(document).ready(function() {
+		$('select').material_select();
+	});
+
+	$(document).ready(function(){
+    	$('.side-nav').pushpin({ top: $('.side-nav').offset().top });
+ 	});
+
+
+
+</script>
+{% endblock %}
+{% block body %}
+<div class="navbar-fixed">
+	<nav class="top-nav z-depth-1 red-lighten 2">
+		<div class="container">
+			<div class="nav-wrapper"><a class="page-title">Vec2PCA</a></div>
+		</div>
+	</nav>
+</div>
+<div class="col s6">
+	
+		<ul id="nav-mobile" class="side-nav fixed" style="transform: translateX(0px);">
+
+			<li><h4>Upload a file</h4></li>
+			<li>
+			<form id="upload" action="" method=post enctype=multipart/form-data>
+				<div class="row">
+					<div class="file-field input-field center-align">
+						<div class="btn waves-effect waves-red">
+							<span>File</span>
+							<input type="file" name="file" onchange="javascript:loadLoadingBar();">
+						</div>
+						<div class="file-path-wrapper">
+							<input class="file-path validate" type="text">
+						</div>
+					</div>
+
+				</div>
+			</form>
+			</li>
+
+			<li>
+			<a href="{{ dl_link }}">Download this</a>
+			</li>
+
+			<li>
+			<form action="" method="POST">
+				<div class="input-field">
+					<select name="filename" id="filename" onchange="return loadXMLDoc()" data-beloworigin="false">
+						<option value="" disabled selected>Choose...</option>
+						{% for fname in filenames %}
+						<option value="{{ fname }}">{{ fname }}</option>
+						{% endfor %}
+					</select>
+				</div>
+			</form>
+			</li>
+		</ul>
+	
+		<div class="container z-depth-2">
+			<div class="card-panel grey lighten-5 hoverable">
+				<div id="myDiv">{{ ajax_table|safe }}</div>
+			</div>
+		</div>
+	
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+    <head>
+
+        <title>{% block title %}{% endblock %}</title>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/js/materialize.min.js"></script>
+        <style>
+        body {
+            background-color: #e8e8e8;
+        }
+        .container {
+            margin-left: 25%;
+            left: auto;
+            right: 5%;
+
+
+        }
+        nav {
+            height: 8%;
+        }
+        .side-nav {
+            width: 20%;
+            
+            padding: 1%;
+        }
+        .card-panel {
+            margin-top: 4%;
+        }
+        </style>
+		{% block head_extra %}{% endblock %}
+    </head>
+    <body>
+		{% block body %}{% endblock %}
+    </body>
+</html>
