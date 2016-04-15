@@ -18,8 +18,14 @@ def results_files():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+def load_table(filename):
+    with open(os.path.join(app.config['RESULTS_FOLDER'], filename)) as f:
+        return f.read().replace('class="dataframe"', 'class="centered striped"')
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
+    fnames = [os.path.split(n)[1] for n in results_files()]
+    ajax_table = ''
     if request.method == 'POST':
         file = request.files['file']
         if file:
@@ -32,31 +38,20 @@ def upload_file():
                 results_file = results_file + '.html'
             file.save(upload_file)
             results = vec2pca(upload_file, results_file)
-
-            return redirect(url_for('uploaded_file',
-                                    filename=os.path.split(results_file)[1]))
-    links = [{'link': fname, 'text': os.path.split(fname)[1]} for fname in results_files()]
-    fnames = [os.path.split(n)[1] for n in results_files()]
-    return render_template('index.html', links=links, filenames=fnames)
+            ajax_table = load_table(os.path.split(results_file)[1])
+    return render_template('index.html', filenames=fnames, ajax_table=ajax_table)
 
 
 
 @app.route('/results/<filename>')
 def uploaded_file(filename):
-    with open(os.path.join(app.config['RESULTS_FOLDER'], filename)) as f:
-        html = f.read().replace('class="dataframe"', 'class="centered"')
+    html = load_table(filename)
     return render_template('result.html', table=html, filename=filename)
-
-@app.route('/select.html')
-def get_table():
-    fnames = [os.path.split(n)[1] for n in results_files()]
-    return render_template('select.html', filenames=fnames)
 
 @app.route('/ajax', methods=['POST'])
 def dropdown():
     filename = request.form['filename']
-    with open(os.path.join(app.config['RESULTS_FOLDER'], filename)) as f:
-        table_html = f.read().replace('class="dataframe"', 'class="centered"')
+    table_html = load_table(filename)
     return jsonify(filename=table_html)
 
 
