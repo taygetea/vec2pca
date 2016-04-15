@@ -8,7 +8,7 @@ import pandas as pd
 import plac
 import re
 from sklearn.decomposition import PCA
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.ERROR, datefmt='%H:%M:%S')
 
 
 
@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=loggi
 def separate_words(sentence, remove_urls=True, remove_stopwords=False):
 
     if remove_urls:
-        sentence = BeautifulSoup(sentence).get_text()
+        sentence = BeautifulSoup(sentence, "lxml").get_text()
 
     wordlist = re.sub("[^a-zA-Z]", " ", sentence).lower().split()
 
@@ -39,7 +39,7 @@ def to_sentences(document, tokenizer, remove_stopwords=False, remove_urls=False)
 
 
 # train a model
-def train(sentences, features=100, mincount=20, workers=1, context=10,
+def train(sentences, features=100, mincount=50, workers=4, context=10,
         sample=1e-3, save=False, precomp=True):
     model = Word2Vec(sentences,
                      sg=1,
@@ -84,18 +84,22 @@ def run_pca(df, outfile="components.csv", n_components=5):
     else:
         return wordcomponents
 
-def main(fname, output):
+
+def main(fname, output, content=None):
 
 
     os.makedirs("outputs", exist_ok=True)
 
     tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
-    inputdata = pd.Series(open(fname).readlines()).dropna()
+    if not fname:
+        inputdata = pd.Series(content.readlines()).dropna()
+    else:
+        inputdata = pd.Series(open(fname).readlines()).dropna()
 
     sentences = []
     for document in inputdata:
-        sentences += to_sentences(document, tokenizer)
+        sentences += to_sentences(document, tokenizer, remove_stopwords=False)
 
     model = train(sentences, save=fname)
 
