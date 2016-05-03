@@ -2,24 +2,17 @@
 {% block title %}Selection{% endblock %}
 {% block head_extra %}
 <script>
-    function loadXMLDoc()
-    {
+    function loadXMLDoc() {
         var req = new XMLHttpRequest()
-        req.onreadystatechange = function()
-        {
-            if (req.readyState == 4)
-            {
-                if (req.status != 200)
-                {
+        req.onreadystatechange = function() {
+            if (req.readyState == 4) {
+                if (req.status != 200) {
                     //error handling code here
                 }
-                else
-                {
+                else {
                     var response = JSON.parse(req.responseText)
-                    document.getElementById('myDiv').innerHTML = response.filename
-                }
-            }
-        }
+                    document.getElementById('full').innerHTML = response.filename
+	}}};
 
         req.open('POST', '/ajax')
         req.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
@@ -28,43 +21,50 @@
         req.send(postVars)
 
         return false
-    }
+    };
 
     function loadLoadingBar() {
         document.getElementById('myDiv').innerHTML = '<div class="progress"><div class="indeterminate"></div></div>'
 		document.getElementById('upload').submit();
         return false;
-    }
+    };
 
 	$(document).ready(function() {
 		$('select').material_select();
 	});
 
 	$(document).ready(function(){
-    	$('.side-nav').pushpin({ top: $('.side-nav').offset().top });
+    	$('.nav-mobile').pushpin({ top: $('.nav-mobile').offset().top });
  	});
 
-
-
+ 	$(document).ready(function(){
+    	$('.collapsible').collapsible({
+      		accordion : false // A setting that changes the collapsible behavior to expandable instead of the default accordion style
+    	});
+  	});
 </script>
 {% endblock %}
 {% block body %}
-<div class="navbar-fixed">
+<div class="navbar-fixed"> <!-- Makes the navbar stay at the top of the page on scroll -->
 	<nav class="top-nav z-depth-1 red-lighten 2">
 		<div class="container">
-			<div class="nav-wrapper"><a class="page-title">Vec2PCA</a></div>
+		<!-- Navbar at top of page -->
+			<div class="nav-wrapper">
+				<a class="brand-logo">Vec2PCA</a>
+			</div>
 		</div>
 	</nav>
 </div>
-<div class="col s6">
-	
-		<ul id="nav-mobile" class="side-nav fixed" style="transform: translateX(0px);">
+<div class="row">	
+	<div class="container col s3 z-depth-1 grey lighten-5 hoverable" id="sidebar">
+		<ul id="nav-mobile">
 
 			<li><h4>Upload a file</h4></li>
 			<li>
+			<!-- Upload form -->
 			<form id="upload" action="" method=post enctype=multipart/form-data>
 				<div class="row">
-					<div class="file-field input-field center-align">
+					<div class="file-field input-field">
 						<div class="btn waves-effect waves-red">
 							<span>File</span>
 							<input type="file" name="file" onchange="javascript:loadLoadingBar();">
@@ -78,11 +78,11 @@
 			</form>
 			</li>
 
-			<li>
+			<li> <!-- Direct link to the table -->
 			<a href="{{ dl_link }}">Download this</a>
 			</li>
 
-			<li>
+			<li> <!-- Dropdown box to choose file to display -->
 			<form action="" method="POST">
 				<div class="input-field">
 					<select name="filename" id="filename" onchange="return loadXMLDoc()" data-beloworigin="false">
@@ -95,12 +95,32 @@
 			</form>
 			</li>
 		</ul>
-	
+	</div>
+	<div class="col s9 right">
 		<div class="container z-depth-2">
-			<div class="card-panel grey lighten-5 hoverable">
-				<div id="myDiv">{{ ajax_table|safe }}</div>
+			<div id="head" class="card-panel grey lighten-5 hoverable">
+				<!-- This is where the table is injected with AJAX -->
+				{{ thead|safe }}
+
+				
 			</div>
 		</div>
-	
+		<div class="container z-depth-2">
+			<div id="tail" class="card-panel grey lighten-5 hoverable">
+				<!-- This is where the table is injected with AJAX -->
+				{{ ttail|safe }}
+
+				
+			</div>
+		</div>
+		<div class="container z-depth-2">
+			<div id="full" class="card-panel grey lighten-5 hoverable">
+				<!-- This is where the table is injected with AJAX -->
+				{{ ajax_table|safe }}
+
+				
+			</div>
+		</div>
+	</div>
 </div>
 {% endblock %}

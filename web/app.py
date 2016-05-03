@@ -18,9 +18,17 @@ def results_files():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-def load_table(filename):
+def load_table(filename, rows=25):
     with open(os.path.join(app.config['RESULTS_FOLDER'], filename)) as f:
-        return f.read().replace('class="dataframe"', 'class="centered striped"')
+        table = f.read().replace('class="dataframe"', 'class="centered striped"')
+        splitup = table.split('</thead>')
+        index = splitup[0] + '</thead>'
+        body = splitup[1].replace('<tbody>', '').split('</tbody>')[0]
+        head = index + "</tr>".join(body.split("</tr>")[:rows]) + "</tr>" + '</tbody>'
+        tail = index + "<tr>" + "<tr>".join(body.split("</tr>")[-rows:]) + '</tbody>'
+        # import pdb; pdb.set_trace()
+        return table, head, tail
+
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -38,22 +46,30 @@ def upload_file():
                 results_file = results_file + '.html'
             file.save(upload_file)
             results = vec2pca(upload_file, results_file)
-            ajax_table = load_table(os.path.split(results_file)[1])
-    return render_template('index.html', filenames=fnames, ajax_table=ajax_table)
+            print(1)
+            ajax_table, thead, ttail = load_table(os.path.split(results_file)[1])
+            print(2)
+            return render_template('index.html', filenames=fnames,
+                ajax_table=ajax_table, thead=thead, ttail=ttail)
+    print(3)
+    return render_template('index.html', filenames=fnames, thead="", ttail="")
 
 
 
 @app.route('/results/<filename>')
 def uploaded_file(filename):
-    html = load_table(filename)
-    return render_template('result.html', table=html, filename=filename)
+    table, thead, ttail = load_table(filename)
+    return render_template('result.html', table=table, thead=thead, ttail=ttail, filename=filename)
 
 @app.route('/ajax', methods=['POST'])
 def dropdown():
     filename = request.form['filename']
-    table_html = load_table(filename)
-    return jsonify(filename=table_html)
+    table, thead, ttail = load_table(filename)
+    return jsonify(filename=table, thead=thead, ttail=ttail)
 
+@app.route('/debug')
+def page():
+    return render_template('debug.html')
 
 if __name__ == "__main__":
     app.run(debug=True)

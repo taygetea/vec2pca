@@ -39,7 +39,7 @@ def to_sentences(document, tokenizer, remove_stopwords=False, remove_urls=False)
 
 
 # train a model
-def train(sentences, features=100, mincount=50, workers=4, context=10,
+def train(sentences, features=200, mincount=100, workers=4, context=20,
         sample=1e-3, save=False, precomp=True):
     model = Word2Vec(sentences,
                      sg=1,
