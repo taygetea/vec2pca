@@ -82,11 +82,12 @@ def run_pca(df, outfile="components.csv", n_components=5):
         wordcomponents.to_csv(outfile)
         logging.info("Components saved at " + os.getcwd() + "/outputs/" + outfile)
     elif outfile.endswith(".html"):
-        html_table = wordcomponents.to_html(index=False)
+        html_table = wordcomponents.to_html(index=False, classes=["centered", "striped"])
         with open(outfile, 'w+') as f:
             f.write(''.join(html_table))
     else:
         return wordcomponents
+
 
 
 def main(fname, output, content=None):
@@ -98,9 +99,11 @@ def main(fname, output, content=None):
     else:
         inputdata = pd.Series(open(fname).readlines()).dropna()
 
-    sentences = []
-    for document in inputdata:
-        sentences += to_sentences(document, tokenizer)
+    # sentences = []
+    # for document in inputdata:
+    #     sentences += to_sentences(document, tokenizer)
+
+    sentences = [to_sentences(document, tokenizer) for document in inputdata]
 
     model = train(sentences, save=fname)
 
