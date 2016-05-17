@@ -1,7 +1,7 @@
 import os
 from flask import *
 from werkzeug import secure_filename
-from vec2pca import main as vec2pca
+from vec2pca import vec2pca
 import glob
 from flask.ext.mail import Mail, Message
 from celery import Celery
@@ -28,26 +28,41 @@ app.config['MAIL_DEFAULT_SENDER'] = "taygeteatesting@gmail.com"
 # Celery configuration
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+app.config['CELERY_IMPORTS'] = ('tasks.runmodel', )
 
 
 # Initialize extensions
 mail = Mail(app)
 
 # Initialize Celery
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'], include=['app.tasks'])
 celery.conf.update(app.config)
 
-
-@celery.task
-def send_async_email(msg):
-    """Background task to send an email with Flask-Mail."""
-    with app.app_context():
-        mail.send(msg)
-
-@celery.task
+@celery.task(name="tasks.runmodel")
 def runmodel(upload, result):
-    with app.app_context():
-        return vec2pca(upload, result)
+    return vec2pca(upload, result)
+
+@celery.task(bind=True)
+def long_task(self, function, *args):
+    """Background task that runs a long function with progress reports."""
+
+    result = function(*args)
+    vec2pca("~/datascience/vec2pca/web/uploads/jsmSmaller.txt", "~/datascience/vec2pca/web/results/jsmtest.csv")
+    return result.get()
+
+@app.route('/longtask', methods=['POST'])
+def longtask():
+    task = long_task.apply_async()
+    return jsonify({}), 202, {'Location': url_for('taskstatus',
+                                                  task_id=task.id)}
+
+
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    return render_template("index.html")
+
+
 
 def results_files():
     return glob.glob(os.path.join(app.config['RESULTS_FOLDER'], '*.*'))
@@ -68,10 +83,10 @@ def load_table(filename, rows=25):
         return table, head, tail
 
 
-@app.route('/', methods=['GET'])
-def main():
-    fnames = [os.path.split(n)[1] for n in results_files()]
-    return render_template('index.html', filenames=fnames)
+# @app.route('/', methods=['GET'])
+# def main():
+#     fnames = [os.path.split(n)[1] for n in results_files()]
+#     return render_template('index.html', filenames=fnames)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
@@ -99,16 +114,18 @@ def upload_file():
             flash('Sending email to {0}'.format(email))
 
         if upload_file != 'uploads/':
-            results = runmodel(upload_file, results_file)
-            ajax_table, thead, ttail = load_table(os.path.split(results_file)[1])
-            return render_template('upload.html', filenames=fnames,
-                ajax_table=ajax_table, thead=thead, ttail=ttail)
-    return render_template('upload.html', filenames="", thead="", ttail="")
+            result = long_task.delay(vec2pca, [upload_file, results_file[:-5]])
+            _df, df = result.get()
+            components = []
+            for i in range(1,9):
+                components.append({
+                    "name": "PC%d" % i,
+                    "top": " ".join(df.iloc[0:200,i]),
+                    "bottom": " ".join(list(df.iloc[-200:,i])[::-1])})
 
-@app.route('/results/<filename>')
-def uploaded_file(filename):
-    table, thead, ttail = load_table(filename)
-    return render_template('result.html', table=table, thead=thead, ttail=ttail, filename=filename)
+            #ajax_table, thead, ttail = load_table(os.path.split(results_file)[1])
+            return render_template('upload.html', components=components)
+    return render_template('upload.html', filenames="", thead="", ttail="")
 
 @app.route('/ajax', methods=['POST'])
 def dropdown():
@@ -124,18 +141,18 @@ def browse():
 def about():
     return render_template('about.html')
 
-@app.route('/debug')
-def debug():
-    df = pd.read_csv("~/datascience/lw_components.csv")
+@app.route('/results/<filename>')
+def result(filename):
+    df = pd.read_csv(os.path.join(app.config['RESULTS_FOLDER'], filename))
 
     components = []
     for i in range(1,9):
         components.append({
         "name": "PC%d" % i,
-        "top": " ".join(df.iloc[0:200,i])[:1300],
+        "top": " ".join(df.iloc[0:200,i]),
         "bottom": " ".join(list(df.iloc[-200:,i])[::-1])})
     print(components[0])
-    return render_template('debug.html', components=components)
+    return render_template('result.html', components=components)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,31 +1,66 @@
 {% extends "base_template.html" %}
 {% block body %}
+    <h2>Example 2: Long running task with progress updates</h2>
+    <!--<button onclick="start_long_task();">Start Long Calculation</button><br><br>-->
+    <button id="start-bg-job">Start Long Calculation</button><br><br>
+    <div id="progress"></div>
 
+    <script src="//cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script>
+        function start_long_task() {
+            // add task status elements
+            div = $('<div class="progress"><div></div><div>0%</div><div>...</div><div>&nbsp;</div></div><hr>');
+            $('#progress').append(div);
 
-   <div class="container grey lighten-5 viewer">
-      
-       
-            <div class="col s12">
-               <ul class="tabs">
-                  {% for comp in components %}
-                  <li class="tab col s1"><a href="#{{ comp['name'] }}" class="active">{{ comp['name'] }}</a></li>
-                  {% endfor %}
+            // create a progress bar
+            var nanobar = new Nanobar({
+                bg: '#44f',
+                target: div[0].childNodes[0]
+            });
 
-               </ul>
-            </div>
-            {% for comp in components %}
-            <div id="{{ comp['name'] }}" class="row">
-               <div class="container col s6 flow-text"><p class="left-align" style="font-size: 14pt; margin-left: 10px">{{ comp['top'] }}</p></div>
-               
-               <div class="container col s6 flow-text"><p class="right-align" style="font-size: 14pt; margin-right: 10px">{{ comp['bottom'] }}</p></div>
-            </div>
-            {% endfor %}
-            
-
-         
-
-   </div>
-</div>
-
+            // send ajax POST request to start background job
+            $.ajax({
+                type: 'POST',
+                url: '/longtask',
+                success: function(data, status, request) {
+                    status_url = request.getResponseHeader('Location');
+                    update_progress(status_url, nanobar, div[0]);
+                },
+                error: function() {
+                    alert('Unexpected error');
+                }
+            });
+        }
+        function update_progress(status_url, nanobar, status_div) {
+            // send GET request to status URL
+            $.getJSON(status_url, function(data) {
+                // update UI
+                percent = parseInt(data['current'] * 100 / data['total']);
+                nanobar.go(percent);
+                $(status_div.childNodes[1]).text(percent + '%');
+                $(status_div.childNodes[2]).text(data['status']);
+                if (data['state'] != 'PENDING' && data['state'] != 'PROGRESS') {
+                    if ('result' in data) {
+                        // show result
+                        $(status_div.childNodes[3]).text('Result: ' + data['result']);
+                    }
+                    else {
+                        // something unexpected happened
+                        $(status_div.childNodes[3]).text('Result: ' + data['state']);
+                    }
+                }
+                else {
+                    // rerun in 2 seconds
+                    setTimeout(function() {
+                        update_progress(status_url, nanobar, status_div);
+                    }, 2000);
+                }
+            });
+        }
+        $(function() {
+            $('#start-bg-job').click(start_long_task);
+        });
+    </script>
 
 {% endblock %}

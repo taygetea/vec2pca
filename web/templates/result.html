@@ -1,12 +1,29 @@
 {% extends "base_template.html" %}
 {% block body %}
 
-<div class="row">	
-	<div class="container grey lighten-5">
-		<div id="full" class="card-panel grey lighten-5">
-		{{ table|safe }}				
-		</div>
-	</div>
+<div class="container grey lighten-5 viewer">
+
+   <div class="col s12">
+      <ul class="tabs bold orange-text text-lighten-1 valign-wrapper">
+         {% for comp in components %}
+         <li class="tab col s1"><a href="#{{ comp['name'] }}" class="valign grey-text bold">{{ comp['name'] }}</a></li>
+         {% endfor %}
+      </ul>
+   </div>
+
+   {% for comp in components %}
+   <div id="{{ comp['name'] }}" class="row">
+      <div class="container col s6 flow-text">
+         <p class="left-align dispcol light-blue-text text-darken-4">{{ comp['top'] }}</p>
+      </div>
+
+      <div class="container col s6 flow-text">
+         <p class="right-align dispcol deep-orange-text text-darken-3">{{ comp['bottom'] }}</p>
+      </div>
+   </div>
+   {% endfor %}
+
 </div>
+
 {% endblock %}
 

@@ -35,11 +35,20 @@
 	</div>
 </div>
 
-<div class="row">	
-	<div class="container grey lighten-5">
-		<div id="full" class="card-panel grey lighten-5">
-		{{ ajax_table|safe }}				
-		</div>
-	</div>
+<div id="viewer" class="container grey lighten-5 viewer">
+   <div class="col s12">
+      <ul class="tabs">
+         {% for comp in components %}
+         <li class="tab col s1"><a href="#{{ comp['name'] }}" class="active">{{ comp['name'] }}</a></li>
+         {% endfor %}
+      </ul>
+   </div>
+   {% for comp in components %}
+   <div id="{{ comp['name'] }}" class="row">
+      <div class="container col s6 flow-text"><p class="left-align" style="font-size: 14pt; margin-left: 10px">{{ comp['top'] }}</p></div>
+      
+      <div class="container col s6 flow-text"><p class="right-align" style="font-size: 14pt; margin-right: 10px">{{ comp['bottom'] }}</p></div>
+   </div>
+   {% endfor %}
 </div>
 {% endblock %}

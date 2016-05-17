@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=loggi
 def separate_words(sentence, remove_urls=True, remove_stopwords=False):
 
     if remove_urls:
-        sentence = BeautifulSoup(sentence).get_text()
+        sentence = BeautifulSoup(sentence, "lxml").get_text()
 
     wordlist = re.sub("[^a-zA-Z]", " ", sentence).lower().split()
 
@@ -34,10 +34,9 @@ def to_sentences(document, tokenizer, remove_stopwords=False, remove_urls=False)
     sentences = tokenizer.tokenize(document.strip())
     sentences = [separate_words(sentence, remove_stopwords, remove_urls)
                  for sentence in sentences if len(sentence) > 0]
+    # import pdb; pdb.set_trace()
 
     return sentences
-
-
 # train a model
 def train(sentences, features=100, mincount=20, workers=4, context=10,
         sample=1e-3, save=False, precomp=True):
@@ -58,7 +57,7 @@ def train(sentences, features=100, mincount=20, workers=4, context=10,
     return model
 
 
-def run_pca(df, outfile="components.csv", n_components=5):
+def run_pca(df, outfile="components.csv", n_components=9):
     pca = PCA(n_components)
     pc = pca.fit_transform(df)
     component_names = ["PC"+str(x) for x in range(0,len(pc[0]+1))]
@@ -78,19 +77,17 @@ def run_pca(df, outfile="components.csv", n_components=5):
     logging.info(disprow(1))
     logging.info(disprow(-1))
 
-    if outfile.endswith(".csv"):
-        wordcomponents.to_csv(outfile)
-        logging.info("Components saved at " + os.getcwd() + "/outputs/" + outfile)
-    elif outfile.endswith(".html"):
-        html_table = wordcomponents.to_html(index=False, classes=["centered", "striped"])
-        with open(outfile, 'w+') as f:
-            f.write(''.join(html_table))
-    else:
-        return wordcomponents
+ 
+    wordcomponents.to_csv(outfile)
+    logging.info("Components saved at " + os.getcwd() + "/outputs/" + outfile)
+    html_table = wordcomponents.to_html(index=False, classes=["centered", "striped"])
+    with open(outfile, 'w+') as f:
+        f.write(''.join(html_table))
+    return wordcomponents
 
 
 
-def main(fname, output, content=None):
+def vec2pca(fname, output, content=None):
 
     tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
@@ -103,9 +100,11 @@ def main(fname, output, content=None):
     # for document in inputdata:
     #     sentences += to_sentences(document, tokenizer)
 
-    sentences = [to_sentences(document, tokenizer) for document in inputdata]
+    sentences = []
+    for document in inputdata:
+        sentences += to_sentences(document, tokenizer, remove_stopwords=False)
 
-    model = train(sentences, save=fname)
+    model = train(sentences)
 
     keys = list(model.vocab.keys())
     df = pd.DataFrame(model[keys], index=keys)
@@ -115,7 +114,7 @@ def main(fname, output, content=None):
 
 
 if __name__ == "__main__":
-    # outputfile = "/home/olivia/datascience/jsmill_components.csv"
-    # filename = "/home/olivia/datascience/d"
-    # main(filename, outputfile)
-    plac.call(main)
+    outputfile = "/home/olivia/datascience/test.csv"
+    filename = "/home/olivia/datascience/vec2pca/web/uploads/2673.txt"
+    vec2pca(filename, outputfile)
+    # plac.call(main)
