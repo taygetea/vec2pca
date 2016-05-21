@@ -1,0 +1,67 @@
+{% extends "base_template.html" %}
+{% block title %}Selection{% endblock %}
+{% block head_extra %}
+<script>
+    function loadXMLDoc()
+    {
+        var req = new XMLHttpRequest()
+        req.onreadystatechange = function()
+        {
+            if (req.readyState == 4)
+            {
+                if (req.status != 200)
+                {
+                    //error handling code here
+                }
+                else
+                {
+                    var response = JSON.parse(req.responseText)
+                    document.getElementById('myDiv').innerHTML = response.filename
+                }
+            }
+        }
+
+        req.open('POST', '/ajax')
+        req.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
+        var un = document.getElementById('filename').value
+        var postVars = 'filename='+un
+        req.send(postVars)
+
+        return false
+    }
+	$(document).ready(function() {
+		$('select').material_select();
+	});
+</script>
+{% endblock %}
+{% block body %}
+<h1>Flask AJAX Test</h1>
+<div class="container">
+<h1>Upload a file</h1>
+<form action="" method=post enctype=multipart/form-data>
+	<div class="file-field input-field">
+		<div class="btn">
+			<span>File</span>
+			<input type="file" name="file">
+		</div>
+		<div class="file-path-wrapper">
+			<input class="file-path validate" type="text">
+		</div>
+	</div>
+	<button class="btn waves-effect waves-light" type="submit" name="action">Submit
+		<i class="material-icons right">send</i>
+	</button>
+</form>
+<form action="" method="POST">
+	<div class="input-field col s6">
+		<select name="filename" id="filename" onchange="return loadXMLDoc()">
+			<option value="" disabled selected>Choose...</option>
+			{% for fname in filenames %}
+			<option value="{{ fname }}">{{ fname }}</option>
+			{% endfor %}
+		</select>
+	</div>
+</form>
+</div>
+<div id="myDiv"></div>
+{% endblock %}
