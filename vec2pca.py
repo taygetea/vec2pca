@@ -135,7 +135,5 @@ def vec2pca(fname, output, content=None):
 
 
 if __name__ == "__main__":
-    outputfile = "/home/olivia/datascience/test.csv"
-    filename = "/home/olivia/datascience/vec2pca/web/uploads/posts_long.txt"
-    vec2pca(filename, outputfile)
-    # plac.call(vec2pca)
+    # vec2pca(filename, outputfile)
+    plac.call(vec2pca)
