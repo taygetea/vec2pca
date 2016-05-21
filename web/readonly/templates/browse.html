@@ -1,0 +1,46 @@
+{% extends "base_template.html" %}
+
+{% block body %}
+<div class="container grey lighten-5">
+	<div id="full" class="card-panel">
+		<ul class="collection with-header">
+			<li>
+				<div class="collection-header">
+					<h4>Premade models</h4>
+					<p>Here are the results of running Vec2PCA on a few large corpora.</p>
+				</div>
+			</li>
+			<li>
+		  		<div class="collection-item">
+		    		<h5>Reddit</h5>
+		    		<p>All reddit comments in May 2015. The rest of the dataset is very large (1TB) and is forthcoming. Retrieved from Google BigQuery.</p>
+		  		</div>
+		  	</li>
+		  	<li>
+				<a href="results/hn_components.csv" class="collection-item">
+					<h5>Hacker News</h5>
+				    <p>All HN comments, also retrieved from BigQuery.</p>
+				</a>
+		  	</li>
+		  	<li>
+				<div class="collection-item">
+		    		<h5>Wikipedia</h5>
+		    		<p>Full dump as of May 2016</p>
+		  		</div>
+			</li>
+			<li>
+				<a href="results/lw_components.csv" class="collection-item">
+		    		<h5>Lesswrong</h5>
+		    		<p>Comments as of around January 2016.</p>
+		  		</a>
+			</li>
+			<li>
+				<div class="collection-item">
+		    		<h5>Project Gutenberg</h5>
+		    		<p>Lots and lots of books.</p>
+		  		</div>
+			</li>
+		</ul>
+	</div>
+</div>
+{% endblock %}

@@ -1,11 +1,11 @@
 import os
 from flask import *
 from werkzeug import secure_filename
+from celery import Celery
 from vec2pca import vec2pca
 import glob
-from flask.ext.mail import Mail, Message
-from celery import Celery
 import pandas as pd
+
 
 RESULTS_FOLDER = 'results'
 UPLOAD_FOLDER = 'uploads'
@@ -16,52 +16,15 @@ app.config['SECRET_KEY'] = 'top-secret!'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['RESULTS_FOLDER'] = RESULTS_FOLDER
-app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = "taygeteatesting@gmail.com"
 
-
-
-# Celery configuration
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
-app.config['CELERY_IMPORTS'] = ('tasks.runmodel', )
 
-
-# Initialize extensions
-mail = Mail(app)
-
-# Initialize Celery
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'], include=['app.tasks'])
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 
-@celery.task(name="tasks.runmodel")
-def runmodel(upload, result):
-    return vec2pca(upload, result)
-
-@celery.task(bind=True)
-def long_task(self, function, *args):
-    """Background task that runs a long function with progress reports."""
-
-    result = function(*args)
-    vec2pca("~/datascience/vec2pca/web/uploads/jsmSmaller.txt", "~/datascience/vec2pca/web/results/jsmtest.csv")
-    return result.get()
-
-@app.route('/longtask', methods=['POST'])
-def longtask():
-    task = long_task.apply_async()
-    return jsonify({}), 202, {'Location': url_for('taskstatus',
-                                                  task_id=task.id)}
-
-
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    return render_template("index.html")
-
+# redis_conn = Redis()
+# q = Queue(connection=redis_conn)
 
 
 def results_files():
@@ -83,17 +46,64 @@ def load_table(filename, rows=25):
         return table, head, tail
 
 
-# @app.route('/', methods=['GET'])
-# def main():
-#     fnames = [os.path.split(n)[1] for n in results_files()]
-#     return render_template('index.html', filenames=fnames)
+@celery.task(bind=True)
+def long_task(self, upload, result):
+    
+
+    self.update_state(state='PROGRESS',
+                          meta={'current': 0, 'total': 0,
+                                'status': "Started"})
+
+    _df, df = vec2pca(upload, result)
+
+    return df
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'GET':
+        return render_template('index.html')
+    
+
+@app.route('/longtask', methods=['POST'])
+def longtask():
+    task = long_task.apply_async()
+    return jsonify({}), 202, {'Location': url_for('taskstatus',
+                                                  task_id=task.id)}
+
+@app.route('/status/<task_id>')
+def taskstatus(task_id):
+    task = long_task.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {
+            'state': task.state,
+            'current': 0,
+            'total': 1,
+            'status': 'Pending...'
+        }
+    elif task.state != 'FAILURE':
+        response = {
+            'state': task.state,
+            'current': task.info.get('current', 0),
+            'total': task.info.get('total', 1),
+            'status': task.info.get('status', '')
+        }
+        if 'result' in task.info:
+            response['result'] = task.info['result']
+    else:
+        # something went wrong in the background job
+        response = {
+            'state': task.state,
+            'current': 1,
+            'total': 1,
+            'status': str(task.info),  # this is the exception raised
+        }
+    return jsonify(response)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     fnames = [os.path.split(n)[1] for n in results_files()]
     if request.method == 'POST':
-        email = request.form['email']
-        session['email'] = email
+
         file = request.files['file']
 
         if file:
@@ -105,17 +115,10 @@ def upload_file():
             else:
                 results_file = results_file + '.html'
 
-        msg = Message('Hello from Flask',
-                       recipients=[request.form['email']])
-        msg.body = 'This is a test email sent from a background Celery task. http://localhost:5000/%s' % results_file
-        if request.form['submit'] == 'Send':
-            send_async_email.delay(msg)
-            #mail.send(msg)
-            flash('Sending email to {0}'.format(email))
-
         if upload_file != 'uploads/':
-            result = long_task.delay(vec2pca, [upload_file, results_file[:-5]])
-            _df, df = result.get()
+            async_result = long_task.delay(upload_file, results_file[:-5])
+            df = async_result.get()
+            # job   inputdata = q.enqueue(vec2pca, upload_file, results_file[:-5])
             components = []
             for i in range(1,9):
                 components.append({
@@ -149,8 +152,8 @@ def result(filename):
     for i in range(1,9):
         components.append({
         "name": "PC%d" % i,
-        "top": " ".join(df.iloc[0:200,i]),
-        "bottom": " ".join(list(df.iloc[-200:,i])[::-1])})
+        "top": "  ".join(df.iloc[0:200,i]),
+        "bottom": "  ".join(list(df.iloc[-200:,i])[::-1])})
     print(components[0])
     return render_template('result.html', components=components)
 
